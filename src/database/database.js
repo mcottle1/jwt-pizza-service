@@ -334,12 +334,11 @@ class DB {
         if (!dbExists) {
           const defaultAdmin = { name: '常用名字', email: 'a@jwt.com', password: 'admin', roles: [{ role: Role.Admin }] };
           this.addUser(defaultAdmin);
+          const defaultDiner = { name: '常用名字', email: 'd@jwt.com', password: 'diner', roles: [{ role: Role.Diner }] };
+          this.addUser(defaultDiner);
+          const defaultFranchisee = { name: '常用名字', email: 'f@jwt.com', password: 'franchisee', roles: [{ role: Role.Franchisee }] };
+          this.addUser(defaultFranchisee);
         }
-
-        const defaultDiner = { name: '常用名字', email: 'd@jwt.com', password: 'diner', roles: [{ role: Role.Diner }] };
-        this.addUser(defaultDiner);
-        const defaultFranchisee = { name: '常用名字', email: 'f@jwt.com', password: 'franchisee', roles: [{ role: Role.Franchisee }] };
-        this.addUser(defaultFranchisee);
       } finally {
         connection.end();
       }
