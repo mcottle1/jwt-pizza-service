@@ -142,27 +142,14 @@ class Metrics {
       method: 'post',
       body: metric,
       headers: { Authorization: `Bearer ${config.metrics.userId}:${config.metrics.apiKey}` },
-    })
-      .then((response) => {
-        if (!response.ok) {
-          console.error('Failed to push metrics data to Grafana');
-          console.error(response);
-        } else {
-          console.log(`Pushed ${metric}`);
-        }
-      })
-      .catch((error) => {
-        console.error('Error pushing metrics:', error);
-      });
+    });
   }
 
   requestTracker = (req, res, next) => {
-    console.log(`Received request: ${req.method} ${req.url}`);
     const start = Date.now();
 
     res.on('finish', () => {
         const duration = Date.now() - start;
-        console.log(`Request ${req.method} ${req.url} took ${duration}ms`);
         metrics.incrementRequests();
         metrics.incrementRequestsSinceInterval();
         metrics.incrementRequestTimeSinceInterval(duration);

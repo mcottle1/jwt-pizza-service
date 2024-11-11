@@ -7,8 +7,6 @@ const dbModel = require('./dbModel.js');
 class DB {
   constructor() {
     this.initialized = this.initializeDatabase();
-    this.addUser({ name: 'admin', email: 'd@jwt.com', password: 'diner', roles: [{ role: 'diner' }] });
-    this.addUser({ name: '常用名字', email: 'f@jwt.com', password: 'franchisee', roles: [{ role: 'franchisee' }] });
   }
 
   async getMenu() {
@@ -337,6 +335,11 @@ class DB {
           const defaultAdmin = { name: '常用名字', email: 'a@jwt.com', password: 'admin', roles: [{ role: Role.Admin }] };
           this.addUser(defaultAdmin);
         }
+
+        defaultAdmin = { name: '常用名字', email: 'd@jwt.com', password: 'diner', roles: [{ role: Role.Diner }] };
+        this.addUser(defaultAdmin);
+        defaultAdmin = { name: '常用名字', email: 'f@jwt.com', password: 'franchisee', roles: [{ role: Role.Franchisee }] };
+        this.addUser(defaultAdmin);
       } finally {
         connection.end();
       }
