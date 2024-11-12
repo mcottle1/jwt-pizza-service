@@ -63,7 +63,7 @@ class Metrics {
   }
 
   decrementUsers() {
-    this.decrementUsers--;
+    this.activeUsers--;
   }
 
   incrementSuccessfulAuths() {
@@ -133,12 +133,15 @@ class Metrics {
         }
         if (req.method === 'DELETE') {
             metrics.incrementDeleteRequests();
+            if (req.url === '/api/auth') {
+                metrics.decrementUsers();
+            }
         }
         if (req.method === 'PUT') {
             metrics.incrementPutRequests();
-        }
-        if (req.url === '/api/auth') {
-            metrics.incrementUsers();
+            if (req.url === '/api/auth') {
+                metrics.incrementUsers();
+            }
         }
         // if (req.url === '/api/auth') {
         //     metrics.decrementUsers();
