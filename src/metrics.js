@@ -14,9 +14,7 @@ class Metrics {
     this.soldPizzas = 0;
     this.failedPizzas = 0;
     this.totalRevenue = 0;
-    this.totalRequestsSinceInterval = 0;
     this.totalRequestTimeSinceInterval = 0;
-    this.totalPizzasSinceInterval = 0;
     this.totalPizzaTimeSinceInterval = 0;
 
     // This will periodically sent metrics to Grafana
@@ -34,13 +32,9 @@ class Metrics {
       this.sendMetricToGrafana('pizzas', 'all', 'soldpizzas', this.soldPizzas);
       this.sendMetricToGrafana('pizzas', 'all', 'failedpizzas', this.failedPizzas);
       this.sendMetricToGrafana('pizzas', 'all', 'totalrevenue', this.totalRevenue);
-      this.sendMetricToGrafana('latency', 'all', 'latency', this.calculateAverageLatency());
-      this.totalRequestsSinceInterval = 0;
-      this.totalRequestTimeSinceInterval = 0;
-      this.sendMetricToGrafana('latency', 'all', 'pizzalatency', this.calculateAveragePizzaLatency());
-      this.totalPizzasSinceInterval = 0;
-      this.totalPizzaTimeSinceInterval = 0;
-    }, 10000);
+      this.sendMetricToGrafana('latency', 'all', 'latency', this.totalRequestTimeSinceInterval);
+      this.sendMetricToGrafana('latency', 'all', 'pizzalatency', this.totalPizzaTimeSinceInterval);
+    }, 3000);
     timer.unref();
   }
 
@@ -92,34 +86,12 @@ class Metrics {
     this.successfulAuths = this.totalRevenue + revenue;
   }
 
-  incrementRequestsSinceInterval() {
-    this.totalRequestsSinceInterval++;
-  }
-
   incrementRequestTimeSinceInterval(duration) {
     this.totalRequestTimeSinceInterval = this.totalRequestTimeSinceInterval + duration;
   }
 
-  calculateAverageLatency() {
-    if(this.totalRequestsSinceInterval === 0) {
-      return 0;
-    }
-    return this.totalRequestTimeSinceInterval / this.totalRequestsSinceInterval;
-  }
-
-  incrementPizzaRequestsSinceInterval() {
-    this.totalPizzasSinceInterval++;
-  }
-
   incrementPizzaRequestTimeSinceInterval(duration) {
     this.totalPizzaTimeSinceInterval = this.totalPizzaTimeSinceInterval + duration;
-  }
-
-  calculateAveragePizzaLatency() {
-    if(this.totalPizzasSinceInterval === 0) {
-      return 0;
-    }
-    return this.totalPizzaTimeSinceInterval / this.totalPizzasSinceInterval;
   }
 
   getCpuUsagePercentage() {
@@ -151,7 +123,6 @@ class Metrics {
     res.on('finish', () => {
         const duration = Date.now() - start;
         metrics.incrementRequests();
-        metrics.incrementRequestsSinceInterval();
         metrics.incrementRequestTimeSinceInterval(duration);
 
         if (req.method === 'POST') {
@@ -185,7 +156,6 @@ class Metrics {
                 }
             }
             if (req.url === '/api/order') {
-                metrics.incrementPizzaRequestsSinceInterval();
                 metrics.incrementPizzaRequestTimeSinceInterval(duration);
                 req.body.items.forEach(item => {
                     if (res.statusCode !== 200) {
