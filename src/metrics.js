@@ -9,6 +9,7 @@ class Metrics {
     this.deleteRequests = 0;
     this.putRequests = 0;
     this.logins = 0;
+    this.logouts = 0;
 
     const timer = setInterval(() => {
       this.sendMetricToGrafana('request', 'all', 'total', this.totalRequests);
@@ -19,6 +20,7 @@ class Metrics {
       this.sendMetricToGrafana('cpu', 'all', 'usage', this.getCpuUsagePercentage());
       this.sendMetricToGrafana('memory', 'all', 'usage', this.getMemoryUsagePercentage());
       this.sendMetricToGrafana('users', 'all', 'logins', this.logins);
+      this.sendMetricToGrafana('users', 'all', 'logouts', this.logouts);
     }, 3000);
     timer.unref();
   }
@@ -45,6 +47,10 @@ class Metrics {
 
   incrementLogins() {
     this.logins++;
+  }
+
+  incrementLogouts() {
+    this.logouts++;
   }
 
   incrementRequestTimeSinceInterval(duration) {
@@ -96,6 +102,9 @@ class Metrics {
         }
         if (req.method === 'PUT' && req.url === '/api/auth') {
             metrics.incrementLogins();
+        }
+        if (req.method === 'DELETE' && req.url === '/api/auth') {
+            metrics.incrementLogouts();
         }
     });
 
