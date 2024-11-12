@@ -128,11 +128,11 @@ class Metrics {
         if (req.method === 'POST') {
             metrics.incrementPostRequests();
             if (req.url === '/api/auth') {
-                if(res.statusCode === 200) {
+                if(res.statusCode !== 200) {
+                    metrics.incrementFailedAuths();
+                }else{
                     metrics.incrementUsers();
                     metrics.incrementSuccessfulAuths();
-                }else{
-                    metrics.incrementFailedAuths();
                 }
             }
         }
@@ -148,11 +148,11 @@ class Metrics {
         if (req.method === 'PUT') {
             metrics.incrementPutRequests();
             if (req.url === '/api/auth') {
-                if(res.statusCode === 200) {
+                if(res.statusCode !== 200) {
+                    metrics.incrementFailedAuths();
+                }else{
                     metrics.incrementUsers();
                     metrics.incrementSuccessfulAuths();
-                }else{
-                    metrics.incrementFailedAuths();
                 }
             }
             if (req.url === '/api/order') {
