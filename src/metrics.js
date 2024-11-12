@@ -127,50 +127,41 @@ class Metrics {
 
         if (req.method === 'POST') {
             metrics.incrementPostRequests();
-            console.info(res.statusCode);
-            if (req.url === '/api/auth') {
-                if(res.statusCode === 500) {
-                    metrics.incrementUsers();
-                    metrics.incrementSuccessfulAuths();
-                }else{
-                    metrics.incrementFailedAuths();
-                }
-            }
         }
         if (req.method === 'GET') {
             metrics.incrementGetRequests();
-            console.info(res.statusCode);
         }
         if (req.method === 'DELETE') {
             metrics.incrementDeleteRequests();
-            console.info(res.statusCode);
-            if (req.url === '/api/auth') {
-                metrics.decrementUsers();
-            }
         }
         if (req.method === 'PUT') {
             metrics.incrementPutRequests();
-            console.info(res.statusCode);
-            if (req.url === '/api/auth') {
-                if(res.statusCode === 500) {
-                    metrics.incrementUsers();
-                    metrics.incrementSuccessfulAuths();
-                }else{
-                    metrics.incrementFailedAuths();
-                }
-            }
-            if (req.url === '/api/order') {
-                metrics.incrementPizzaRequestTimeSinceInterval(duration);
-                req.body.items.forEach(item => {
-                    if (res.statusCode === 500) {
-                        metrics.incrementPizzas();
-                        metrics.incrementRevenue(item.price);
-                    } else{
-                        metrics.incrementFailedPizzas();
-                    }
-                });
-            }
         }
+        if (req.url === '/api/auth') {
+            metrics.incrementUsers();
+        }
+        // if (req.url === '/api/auth') {
+        //     metrics.decrementUsers();
+        // }
+        // if (req.url === '/api/auth') {
+        //     if(res.body.status === 200) {
+        //         metrics.incrementUsers();
+        //         metrics.incrementSuccessfulAuths();
+        //     }else{
+        //         metrics.incrementFailedAuths();
+        //     }
+        // }
+        // if (req.url === '/api/order') {
+        //     metrics.incrementPizzaRequestTimeSinceInterval(duration);
+        //     req.body.items.forEach(item => {
+        //         if (res.body.status === 200) {
+        //             metrics.incrementPizzas();
+        //             metrics.incrementRevenue(item.price);
+        //         } else{
+        //             metrics.incrementFailedPizzas();
+        //         }
+        //     });
+        // }
     });
 
     next();
