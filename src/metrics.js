@@ -96,7 +96,6 @@ class Metrics {
 
   requestTracker = (req, res, next) => {
     const start = Date.now();
-    console.log('request received', req.method, req.url);
     const url = req.url;
     metrics.totalRequests++;
 
