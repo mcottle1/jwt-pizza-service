@@ -8,53 +8,51 @@ class Metrics {
     this.postRequests = 0;
     this.deleteRequests = 0;
     this.putRequests = 0;
-    this.logins = 0;
-    this.logouts = 0;
+    this.activeUsers = 0;
+    this.goodAuthAttempts = 0;
+    this.badAuthAttempts = 0;
+    this.soldPizzas = 0;
+    this.revenue = 0;
+    this.creationFailures = 0;
+    this.latency = 0
+    this.pizzaLatency = 0;
 
-    const timer = setInterval(() => {
-      this.sendMetricToGrafana('request', 'all', 'total', this.totalRequests);
-      this.sendMetricToGrafana('request', 'get', 'get', this.getRequests);
-      this.sendMetricToGrafana('request', 'post', 'post', this.postRequests);
-      this.sendMetricToGrafana('request', 'delete', 'delete', this.deleteRequests);
-      this.sendMetricToGrafana('request', 'put', 'put', this.putRequests);
-      this.sendMetricToGrafana('cpu', 'all', 'usage', this.getCpuUsagePercentage());
-      this.sendMetricToGrafana('memory', 'all', 'usage', this.getMemoryUsagePercentage());
-      this.sendMetricToGrafana('users', 'all', 'logins', this.logins);
-      this.sendMetricToGrafana('users', 'all', 'logouts', this.logouts);
-    }, 3000);
-    timer.unref();
+    this.sendMetricsPeriodically(3000);
   }
 
-  incrementRequests() {
-    this.totalRequests++;
+  httpMetrics(metricString) {
+    metricString.push(`request,source=${config.metrics.source},method=all total=${this.totalRequests}`);
+    metricString.push(`request,source=${config.metrics.source},method=get get=${this.getRequests}`);
+    metricString.push(`request,source=${config.metrics.source},method=post post=${this.postRequests}`);
+    metricString.push(`request,source=${config.metrics.source},method=delete delete=${this.deleteRequests}`);
+    metricString.push(`request,source=${config.metrics.source},method=put put=${this.putRequests}`);
   }
 
-  incrementGetRequests() {
-    this.getRequests++;
+  systemMetrics(metricString) {
+    const cpuUsage = this.getCpuUsagePercentage();
+    const memoryUsage = this.getMemoryUsagePercentage();
+    metricString.push(`system,source=${config.metrics.source} cpu=${cpuUsage}`);
+    metricString.push(`system,source=${config.metrics.source} memory=${memoryUsage}`);
   }
 
-  incrementPostRequests() {
-    this.postRequests++;
+  authMetrics(metricString) {
+    metricString.push(`auth,source=${config.metrics.source} good=${this.goodAuthAttempts}`);
+    metricString.push(`auth,source=${config.metrics.source} bad=${this.badAuthAttempts}`);
   }
 
-  incrementDeleteRequests() {
-    this.deleteRequests++;
+  userMetrics(metricString) {
+    metricString.push(`user,source=${config.metrics.source} users=${this.activeUsers}`);
   }
 
-  incrementPutRequests() {
-    this.putRequests++;
+  purchaseMetrics(metricString) {
+    metricString.push(`purchase,source=${config.metrics.source} sold=${this.soldPizzas}`);
+    metricString.push(`purchase,source=${config.metrics.source} renevue=${this.revenue}`);
+    metricString.push(`purchase,source=${config.metrics.source} creationFailure=${this.creationFailures}`);
   }
 
-  incrementLogins() {
-    this.logins++;
-  }
-
-  incrementLogouts() {
-    this.logouts++;
-  }
-
-  incrementRequestTimeSinceInterval(duration) {
-    this.totalRequestTimeSinceInterval = this.totalRequestTimeSinceInterval + duration;
+  latencyMetrics(metricString) {
+    metricString.push(`latency,source=${config.metrics.source} latency=${this.latency}`);
+    metricString.push(`latency,source=${config.metrics.source} pizzaLatency=${this.pizzaLatency}`);
   }
 
   getCpuUsagePercentage() {
@@ -70,41 +68,80 @@ class Metrics {
     return memoryUsage.toFixed(2);
   }
 
-  sendMetricToGrafana(metricPrefix, httpMethod, metricName, metricValue) {
-    const metric = `${metricPrefix},source=${config.metrics.source},method=${httpMethod} ${metricName}=${metricValue}`;
-
+  sendMetricToGrafana(metrics) {
     fetch(`${config.metrics.url}`, {
       method: 'post',
-      body: metric,
+      body: metrics,
       headers: { Authorization: `Bearer ${config.metrics.userId}:${config.metrics.apiKey}` },
     });
   }
 
+  sendMetricsPeriodically(period) {
+    const timer = setInterval(() => {
+      try {
+        const metricString = [];
+        this.httpMetrics(metricString);
+        this.systemMetrics(metricString);
+        this.userMetrics(metricString);
+        this.purchaseMetrics(metricString);
+        this.authMetrics(metricString);
+        this.latencyMetrics(metricString);
+        const metrics = metricString.join('\n');
+        this.sendMetricToGrafana(metrics);
+      } catch (error) {
+        console.log('Error sending metrics', error);
+      }
+    }, period);
+  }
+
   requestTracker = (req, res, next) => {
     const start = Date.now();
+    console.log('request received', req.method, req.url);
+    const url = req.url;
+    metrics.totalRequests++;
+
+    if (req.method === 'POST') {
+      metrics.postRequests++;
+    }
+    if (req.method === 'GET') {
+      metrics.getRequests++;
+    }
+    if (req.method === 'DELETE') {
+      metrics.deleteRequests++;
+    }
+    if (req.method === 'PUT') {
+      metrics.putRequests++;
+    }
 
     res.on('finish', () => {
         const duration = Date.now() - start;
-        metrics.incrementRequests();
-        metrics.incrementRequestTimeSinceInterval(duration);
-
-        if (req.method === 'POST') {
-            metrics.incrementPostRequests();
+        metrics.latency += duration;
+        if(res.statusCode === 200 && url === '/api/auth' && (req.method === 'POST' || req.method === 'PUT')) {
+          metrics.activeUsers++;
         }
-        if (req.method === 'GET') {
-            metrics.incrementGetRequests();
+        if(res.statusCode === 200 && url === '/api/auth' && req.method === 'DELETE') {
+          metrics.activeUsers--;
         }
-        if (req.method === 'DELETE') {
-            metrics.incrementDeleteRequests();
+        if(res.statusCode === 200 && url === '/api/auth') {
+          metrics.goodAuthAttempts++;
         }
-        if (req.method === 'PUT') {
-            metrics.incrementPutRequests();
+        if(res.statusCode !== 200 && url === '/api/auth') {
+          metrics.badAuthAttempts++;
         }
-        if (req.method === 'PUT' && req.url === '/api/auth') {
-            metrics.incrementLogins();
+        if(res.statusCode === 200 && url === '/api/oder' && req.method === 'POST') {
+          console.log('sold a pizza');
+          metrics.soldPizzas++;
         }
-        if (req.method === 'DELETE' && req.url === '/api/auth') {
-            metrics.incrementLogouts();
+        if(url === '/api/order' && req.method === 'POST') {
+          if(res.statusCode === 200) {
+            for(let i = 0; i < req.body.items.length; i++) {
+              metrics.soldPizzas++;
+              metrics.revenue += req.body.items[i].price;
+            }
+            metrics.pizzaLatency += duration;
+          }else{
+            metrics.creationFailures++;
+          }
         }
     });
 
