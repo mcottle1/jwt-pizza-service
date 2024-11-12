@@ -77,7 +77,7 @@ class Metrics {
   }
 
   sendMetricsPeriodically(period) {
-    const timer = setInterval(() => {
+    setInterval(() => {
       try {
         const metricString = [];
         this.httpMetrics(metricString);
