@@ -3,6 +3,7 @@ const jwt = require('jsonwebtoken');
 const config = require('../config.js');
 const { asyncHandler } = require('../endpointHelper.js');
 const { DB, Role } = require('../database/database.js');
+const { StatusCodeError } = require('../endpointHelper.js');
 
 const authRouter = express.Router();
 
@@ -124,7 +125,7 @@ authRouter.put(
       throw new StatusCodeError('unknown endpoint', 404);
     }
 
-    enableChaos = req.params.state === 'true';
+    const enableChaos = req.params.state === 'true';
     res.json({ chaos: enableChaos });
   })
 );
