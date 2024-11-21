@@ -16,6 +16,7 @@ class Metrics {
     this.creationFailures = 0;
     this.latency = 0
     this.pizzaLatency = 0;
+    this.chaos = 0;
 
     this.sendMetricsPeriodically(3000);
   }
@@ -26,6 +27,7 @@ class Metrics {
     metricString.push(`request,source=${config.metrics.source},method=post post=${this.postRequests}`);
     metricString.push(`request,source=${config.metrics.source},method=delete delete=${this.deleteRequests}`);
     metricString.push(`request,source=${config.metrics.source},method=put put=${this.putRequests}`);
+    metricString.push(`chaos,source=${config.metrics.source} chaos=${this.chaos}`);
   }
 
   systemMetrics(metricString) {
@@ -110,6 +112,9 @@ class Metrics {
     }
     if (req.method === 'PUT') {
       metrics.putRequests++;
+      if (url.startsWith('/chaos/')) {
+        metrics.chaos++;
+      }
     }
 
     res.on('finish', () => {
