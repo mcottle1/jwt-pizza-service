@@ -112,7 +112,7 @@ class Metrics {
     }
     if (req.method === 'PUT') {
       metrics.putRequests++;
-      if (url.startsWith('/chaos/')) {
+      if (url.startsWith('/api/chaos')) {
         metrics.chaos++;
       }
     }
