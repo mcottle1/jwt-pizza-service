@@ -4,7 +4,6 @@ const { Role, DB } = require('../database/database.js');
 const { authRouter } = require('./authRouter.js');
 const { asyncHandler, StatusCodeError } = require('../endpointHelper.js');
 const logger = require('../logger.js');
-const AbortController = require('abort-controller');
 
 const orderRouter = express.Router();
 
