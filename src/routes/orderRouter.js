@@ -4,6 +4,7 @@ const { Role, DB } = require('../database/database.js');
 const { authRouter } = require('./authRouter.js');
 const { asyncHandler, StatusCodeError } = require('../endpointHelper.js');
 const logger = require('../logger.js');
+const AbortController = require('abort-controller');
 
 const orderRouter = express.Router();
 
@@ -79,23 +80,71 @@ orderRouter.post(
   authRouter.authenticateToken,
   asyncHandler(async (req, res) => {
     const orderReq = req.body;
-    const order = await DB.addDinerOrder(req.user, orderReq);
-    const r = await fetch(`${config.factory.url}/api/order`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', authorization: `Bearer ${config.factory.apiKey}` },
-      body: JSON.stringify({ diner: { id: req.user.id, name: req.user.name, email: req.user.email }, order }),
-    });
-    const j = await r.json();
-    logger.log(logger.statusToLogLevel(r.status), 'factory', { authorized: 'true',
-      path: `${config.factory.url}/api/order`,
-      method: 'POST',
-      statusCode: r.status,
-      reqBody: JSON.stringify({ diner: { id: req.user.id, name: req.user.name, email: req.user.email }, order }),
-      resBody: JSON.stringify({ order, jwt: j.jwt, reportUrl: j.reportUrl }),});
-    if (r.ok) {
-      res.send({ order, jwt: j.jwt, reportUrl: j.reportUrl });
-    } else {
-      res.status(500).send({ message: 'Failed to fulfill order at factory', reportUrl: j.reportUrl });
+
+    try {
+      // Add order to database
+      const order = await DB.addDinerOrder(req.user, orderReq);
+
+      // Setup AbortController for timeout
+      const controller = new AbortController();
+      const timeout = setTimeout(() => {
+        controller.abort(); // Abort the fetch request after 10 seconds
+      }, 10000);
+
+      try {
+        // Make the external API call
+        const r = await fetch(`${config.factory.url}/api/order`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            authorization: `Bearer ${config.factory.apiKey}`,
+          },
+          body: JSON.stringify({
+            diner: {
+              id: req.user.id,
+              name: req.user.name,
+              email: req.user.email,
+            },
+            order,
+          }),
+          signal: controller.signal, // Pass the signal to fetch
+        });
+
+        clearTimeout(timeout); // Clear timeout if fetch is successful
+        const j = await r.json();
+
+        // Log response and send data back to user
+        logger.log(
+          logger.statusToLogLevel(r.status),
+          'factory',
+          {
+            authorized: 'true',
+            path: `${config.factory.url}/api/order`,
+            method: 'POST',
+            statusCode: r.status,
+            reqBody: JSON.stringify({
+              diner: { id: req.user.id, name: req.user.name, email: req.user.email },
+              order,
+            }),
+            resBody: JSON.stringify({ order, jwt: j.jwt, reportUrl: j.reportUrl }),
+          }
+        );
+
+        if (r.ok) {
+          res.send({ order, jwt: j.jwt, reportUrl: j.reportUrl });
+        } else {
+          res.status(500).send({ message: 'Failed to fulfill order at factory', reportUrl: j.reportUrl });
+        }
+      } catch (err) {
+        if (err.name === 'AbortError') {
+          res.status(408).send({ message: 'Request to factory API timed out' });
+        } else {
+          throw err; // Handle other types of errors
+        }
+      }
+    } catch (error) {
+      console.error('Error handling order request:', error);
+      res.status(500).send({ message: 'An error occurred while processing your order' });
     }
   })
 );
